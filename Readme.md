@@ -91,7 +91,19 @@ python main.py
 Ứng dụng sẽ mở cửa sổ giao diện người dùng, nơi có thể chọn tệp hình ảnh đầu vào và cấu hình các tham số như tỉ lệ nâng cấp và mô hình. Tab Image Upscale và Video Upscale tương tự nhau
 
 ![Main Window](ReadmeImages/Main.png)
-## Lưu ý
+
+Chọn bức ảnh (có thể lấy ảnh mẫu trong Images), ảnh sẽ hiển thị preview ngoài form
+
+![When Select Image Done](ReadmeImages/Select%20Image%20Done.png)
+
+Điều chỉnh model, scale cho phù hợp. Sau đó bấm **Upscale** để chạy, trạng thái sẽ hiển thị trên Progressbar
+
+![When Upscale Image Done](ReadmeImages/Upscale%20Image%20Done.png)
+
+Sau khi có output, có thể bấm **Compare Image** Để so sánh chi tiết hơn. Ảnh bên trái là ảnh gốc, bên phải là sau xử lý, cách nhau bằng đường thẳng.
+
+![Compare Image](ReadmeImages/Compare%20Image.png)
+
 
 - **GPU**: Cần cài CUDA theo [**hướng dẫn**](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan?tab=readme-ov-file#full-usages) (nếu cần thiết).
 - **Video**: Chức năng upscale video sẽ sớm được cập nhật.
