@@ -17,7 +17,9 @@ class Command:
 
     def RunUpscaleCommand(args: List[str], callback=None):
         full_command = [REALESRGAN] + args
-        print(f"Full command: {' '.join(full_command)}")
+        print('----------------------Cmd Command----------------------')
+        print(' '.join(full_command))
+        print('----------------------Cmd Command----------------------')
 
         process = subprocess.Popen(
             full_command,
@@ -52,7 +54,9 @@ class Command:
 
     def RunCompareCommand(args:List[str]):
         full_command = [COMPARE] + args
-        print(f"Full command: {' '.join(full_command)}")
+        print('----------------------Cmd Command----------------------')
+        print(' '.join(full_command))
+        print('----------------------Cmd Command----------------------')
 
         process = subprocess.Popen(
             full_command,
@@ -62,3 +66,4 @@ class Command:
             text=True
         )
         process.wait()
+

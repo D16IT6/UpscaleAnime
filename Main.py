@@ -3,9 +3,9 @@ from typing import Tuple
 
 import sys
 
-from PyQt5.QtCore import Qt, QFileInfo, QDir, QUrl
-from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog, QMessageBox
-from PyQt5.QtGui import QPixmap, QDesktopServices
+from PyQt6.QtCore import Qt, QDir, QUrl, QFileInfo
+from PyQt6.QtWidgets import QApplication, QWidget, QFileDialog, QMessageBox
+from PyQt6.QtGui import QPixmap, QDesktopServices
 
 from Models.UpscaleModel import UpscaleModel
 from Utilities.Command import Command
@@ -15,21 +15,23 @@ from Windows.MainWindow import Ui_MainWindow
 
 config = Configuration()
 
+allowed_extensions = ['jpg', 'png', 'webp']
+
 
 def InitForm() -> Tuple[QApplication, Ui_MainWindow, QWidget]:
     app = QApplication(sys.argv)
-    Form = QWidget()
+    form = QWidget()
     ui = Ui_MainWindow()
-    ui.setupUi(Form)
-    return app, ui, Form
+    ui.setupUi(form)
+    return app, ui, form
 
 
 def LoadData(mainWindow: Ui_MainWindow, command: Command):
     combobox = mainWindow.modelComboBox
 
-    upscaleModels = command.LoadModels()
+    upscale_models = command.LoadModels()
 
-    for upscaleModel in upscaleModels:
+    for upscaleModel in upscale_models:
         combobox.addItem(upscaleModel.name, upscaleModel)
 
 
@@ -55,19 +57,19 @@ def ConnectEvents(ui: Ui_MainWindow):
             None,
             "Chọn ảnh anime cần upscale",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)"
+            "Image Files (*.png *.jpg *.jpeg *.webp)"
         )
 
         if file_path:
             file_info = QFileInfo(file_path)
 
-            if file_info.exists() and file_info.suffix().lower() in ['jpg', 'png', 'webp']:
+            if IsValidImage(file_info,allowed_extensions):
                 pixmap = QPixmap(file_path)
 
                 label_width = ui.imageLabelTop.width()
                 label_height = ui.imageLabelTop.height()
 
-                scaled_pixmap = pixmap.scaled(label_width, label_height, aspectRatioMode=Qt.KeepAspectRatio)
+                scaled_pixmap = pixmap.scaled(label_width, label_height,Qt.AspectRatioMode.KeepAspectRatio)
 
                 ui.imageLabelTop.setPixmap(scaled_pixmap)
                 ui.imageLabelTop.setScaledContents(True)
@@ -79,14 +81,16 @@ def ConnectEvents(ui: Ui_MainWindow):
     def AllowExistFile(output_file):
         if os.path.exists(output_file):
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
+            msg.setIcon(QMessageBox.Icon.Warning)
             msg.setText(f"Tệp {output_file} đã tồn tại, bạn vẫn muốn tiếp tục chứ?")
             msg.setWindowTitle("Cảnh báo")
-            msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-            result = msg.exec_()
-            return not result == QMessageBox.Cancel
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
 
-        return True
+            result = msg.exec()
+
+            return result != QMessageBox.StandardButton.Cancel
+        else:
+            return True
 
     def OnOpenFolderClick():
 
@@ -94,14 +98,13 @@ def ConnectEvents(ui: Ui_MainWindow):
 
         input_file_info = QFileInfo(input_file)
 
-        allow = ['jpg', 'png', 'webp']
-        if not input_file_info.exists() or not input_file_info.suffix().lower() in allow:
+        if not IsValidImage(input_file_info,allowed_extensions):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText(f"Hãy chọn ảnh để lấy đầu ra.")
             msg.setWindowTitle("Cảnh báo")
             msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec_()
+            msg.exec()
             return
 
         folder_path = QDir(input_file_info.absolutePath())
@@ -113,15 +116,16 @@ def ConnectEvents(ui: Ui_MainWindow):
         scale = config.Scale
         current_model = config.CurrentModel
 
-        file_info = QFileInfo(input_file)
+        output_file_info = QFileInfo(input_file)
 
-        if not file_info.exists() or not file_info.suffix().lower() in ['jpg', 'png', 'webp']:
+
+        if not IsValidImage(output_file_info,allowed_extensions):
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
+            msg.setIcon(QMessageBox.Icon.Warning)
             msg.setText(f"Vui lòng chọn đầu vào")
             msg.setWindowTitle("Lỗi")
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec_()
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
             return
 
         config.GenerateOutputFile()
@@ -130,40 +134,36 @@ def ConnectEvents(ui: Ui_MainWindow):
         if not AllowExistFile(output_file):
             return
 
-        print(f"Input File: {input_file}")
-        print(f"Scale: {scale}")
-        print(f"Output File: {output_file}")
-        print(f"Model: {current_model}")
+        config.ShowLogInfo()
 
         args = ["-i", input_file, "-o", output_file, "-s", str(scale), "-n", current_model, "-m", MODELS]
 
-        print(' '.join(args))
+        process_callback = lambda status: ui.progressBaUpscaleStatus.setValue(status)
 
-        processCallback = lambda status: ui.progressBaUpscaleStatus.setValue(status)
+        Command.RunUpscaleCommand(args, process_callback)
 
-        Command.RunUpscaleCommand(args, processCallback)
+        output_file_info = QFileInfo(output_file)
 
-        file_info = QFileInfo(output_file)
-
-        print(file_info.size(), file_info.suffix(), file_info.path())
-
-        if file_info.exists() and file_info.suffix().lower() in ['jpg', 'png', 'webp']:
+        if IsValidImage(output_file_info,allowed_extensions):
             pixmap = QPixmap(output_file)
 
             label_width = ui.imageLabelBottom.width()
             label_height = ui.imageLabelBottom.height()
 
-            scaled_pixmap = pixmap.scaled(label_width, label_height, aspectRatioMode=Qt.KeepAspectRatio)
+            scaled_pixmap = pixmap.scaled(label_width, label_height, aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio)
 
             ui.imageLabelBottom.setPixmap(scaled_pixmap)
             ui.imageLabelBottom.setScaledContents(True)
 
         msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
-        msg.setText(f"Hoàn thành upscale")
+        msg.setIcon(QMessageBox.Icon.Information)
+        msg.setText("Hoàn thành upscale")
         msg.setWindowTitle("Thông báo")
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec_()
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
+    def IsValidImage(file_info, allowed_extensions):
+        return file_info.exists() and file_info.suffix().lower() in allowed_extensions
 
     def OnCompareClick():
 
@@ -173,15 +173,14 @@ def ConnectEvents(ui: Ui_MainWindow):
         input_file_info = QFileInfo(input_file)
         output_file_info = QFileInfo(output_file)
 
-        allow = ['jpg', 'png', 'webp']
-        if (
-                not input_file_info.exists() or not output_file_info.exists() or not input_file_info.suffix().lower() in allow or not output_file_info.suffix().lower() in allow):
+
+        if not IsValidImage(input_file_info, allowed_extensions) or not IsValidImage(output_file_info,allowed_extensions):
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
-            msg.setText(f"Hãy chọn ảnh và upscale để so sánh.")
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setText("Hãy chọn ảnh và upscale để so sánh.")
             msg.setWindowTitle("Cảnh báo")
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec_()
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
             return
 
         args = [input_file, output_file, "-w", f"{COMPARE_WIDTH}x{COMPARE_HEIGHT}"]
@@ -208,4 +207,4 @@ if __name__ == "__main__":
 
     form.show()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
